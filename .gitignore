@@ -1,0 +1,18 @@
+# Rust build artifacts
+/target/*
+**/*.rs.bk
+*.pdb
+
+# General
+.DS_Store
+*.log
+.ropeproject
+
+# Executables
+*.exe
+*.out
+*.app
+*.elf
+
+# Debug symbols
+*.dSYM/
