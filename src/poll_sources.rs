@@ -12,9 +12,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ahash::AHashSet;
 use futures::future::try_join_all;
 use reqwest::Client;
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Cursor, Write};
 use std::path::Path;
@@ -62,7 +62,7 @@ async fn fetch_yara(client: &Client, source: &str) -> Result<(), Box<dyn std::er
 async fn fetch(
     client: &Client,
     source: &str,
-) -> Result<HashSet<String>, Box<dyn std::error::Error>> {
+) -> Result<AHashSet<String>, Box<dyn std::error::Error>> {
     let response = client.get(source).send().await?;
     let content_type = response
         .headers()
@@ -73,7 +73,7 @@ async fn fetch(
         let data = response.bytes().await?;
         let cursor = Cursor::new(data);
         let mut archive = ZipArchive::new(cursor)?;
-        let mut hashes = HashSet::new();
+        let mut hashes = AHashSet::new();
 
         for i in 0..archive.len() {
             let file = archive.by_index(i)?;
@@ -105,10 +105,10 @@ pub async fn poll_yara(client: &Client) -> Result<(), Box<dyn std::error::Error>
 async fn poll_hashes(
     client: &Client,
     sources: &[&str],
-) -> Result<HashSet<String>, Box<dyn std::error::Error>> {
+) -> Result<AHashSet<String>, Box<dyn std::error::Error>> {
     let futures: Vec<_> = sources.iter().map(|source| fetch(client, source)).collect();
     let results = try_join_all(futures).await?;
-    let mut combined = HashSet::new();
+    let mut combined = AHashSet::new();
     for result in results {
         combined.extend(result);
     }
@@ -116,8 +116,8 @@ async fn poll_hashes(
     Ok(combined)
 }
 
-fn save(hashes: HashSet<String>, persistent: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let filtered: HashSet<_> = hashes
+fn save(hashes: AHashSet<String>, persistent: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let filtered: AHashSet<_> = hashes
         .into_iter()
         .filter(|hash| !hash.contains('#'))
         .collect();
