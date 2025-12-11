@@ -12,7 +12,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::data_handling::{load_hashes, load_rules};
 use ahash::AHashSet;
 use digest::{Digest as DigestTrait, OutputSizeUser};
 use generic_array::ArrayLength;
@@ -125,11 +124,13 @@ fn check_rules(
     }
 }
 
-pub fn scan_file(file: &Path) -> Result<ScanResult, Box<dyn std::error::Error>> {
-    let known_hashes = load_hashes()?;
-    let yara_rules = load_rules()?;
-    let (hash_match, md5, sha1, sha256) = check_hash(file, &known_hashes)?;
-    let (yara_match, yara_rules) = check_rules(file, &yara_rules)?;
+pub fn scan_file(
+    file: &Path,
+    known_hashes: &AHashSet<String>,
+    yara_rules: &Rules,
+) -> Result<ScanResult, Box<dyn std::error::Error>> {
+    let (hash_match, md5, sha1, sha256) = check_hash(file, known_hashes)?;
+    let (yara_match, yara_rules) = check_rules(file, yara_rules)?;
     let result = ScanResult {
         hash_match,
         yara_match,

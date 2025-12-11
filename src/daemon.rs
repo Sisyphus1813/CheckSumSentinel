@@ -15,13 +15,15 @@
 use crate::checks::scan_file;
 use crate::data_handling::load_directories;
 use crate::user_notification::notify_user;
+use ahash::AHashSet;
 use log::error;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::Path;
 use std::sync::mpsc::channel;
 use std::time::Duration;
+use yara::Rules;
 
-pub fn watch_directories() -> notify::Result<()> {
+pub fn watch_directories(hashes: &AHashSet<String>, rules: &Rules) -> notify::Result<()> {
     let dirs: Vec<String> = load_directories()?;
     let (tx, rx) = channel();
     let mut watcher: RecommendedWatcher = notify::recommended_watcher(move |res| {
@@ -32,18 +34,18 @@ pub fn watch_directories() -> notify::Result<()> {
     }
     loop {
         match rx.recv_timeout(Duration::from_secs(2)) {
-            Ok(Ok(event)) => handle_event(event),
+            Ok(Ok(event)) => handle_event(event, hashes, rules),
             Ok(Err(e)) => error!("Watch error: {:?}", e),
             Err(_) => {}
         }
     }
 }
 
-fn handle_event(event: Event) {
+fn handle_event(event: Event, hashes: &AHashSet<String>, rules: &Rules) {
     if let EventKind::Create(_) = event.kind {
         for path in event.paths {
             if path.is_file() {
-                match scan_file(&path) {
+                match scan_file(&path, hashes, rules) {
                     Ok(result) => notify_user(&path, &result, false),
                     Err(e) => error!("Failed to check {:?}: {e}", path),
                 }

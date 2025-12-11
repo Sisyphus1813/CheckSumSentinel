@@ -106,7 +106,7 @@ Note that the system timers currently only update stored hashes. Yara rules must
 ## Data Storage
 
 - **Hash files**: `/var/lib/css/hashes/` — All files in this directory are loaded and merged. Each file should contain one hash per line (MD5, SHA1, or SHA256).
-- **YARA rules**: `/var/lib/css/yara_rules/` — All `.yar` files in this directory are compiled and used for scanning.
+- **YARA rules**: `/var/lib/css/yara_rules/` — All `.yar` files in this directory are compiled, saved, and used for scanning.
 - **Configuration**: `/etc/css/directories_monitor.json` — JSON file specifying directories to monitor.
 
 ---

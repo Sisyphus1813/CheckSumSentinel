@@ -13,11 +13,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ahash::AHashSet;
-use log::error;
+use log::{error, info, warn};
 use serde::Deserialize;
 use std::env;
 use std::error::Error;
-use std::fs::{self, File};
+use std::fs::{self, File, remove_file};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use yara::{Compiler, Rules};
@@ -91,6 +91,23 @@ pub fn load_hashes() -> io::Result<AHashSet<String>> {
 }
 
 pub fn load_rules() -> Result<Rules, Box<dyn Error>> {
+    match Rules::load_from_file("/var/lib/css/yara_rules/compiled_rules.yarc") {
+        Ok(r) => {
+            info!("Sucessfully loaded compiled YARA rules from disk.");
+            return Ok(r);
+        }
+        Err(e) => {
+            info!("{}", e);
+            info!("Failed to load pre compiled rules...attempting to recompile YARA rules.");
+        }
+    }
+    match compile_and_save() {
+        Ok(r) => Ok(r),
+        Err(e) => Err(e),
+    }
+}
+
+pub fn compile_and_save() -> Result<Rules, Box<dyn Error>> {
     let dir = Path::new("/var/lib/css/yara_rules/");
     let rules: Vec<PathBuf> = fs::read_dir(dir)?
         .filter_map(|entry| {
@@ -108,5 +125,27 @@ pub fn load_rules() -> Result<Rules, Box<dyn Error>> {
     let compiler = rules
         .into_iter()
         .try_fold(Compiler::new()?, |c, p| c.add_rules_file(p))?;
-    Ok(compiler.compile_rules()?)
+    match compiler.compile_rules() {
+        Ok(r) => {
+            let mut compiled_rules = r;
+            if let Err(e) = remove_file("/var/lib/css/yara_rules/compiled_rules.yarc") {
+                warn!(
+                    "Failed to remove old compiled YARA rules or they do not exist. {}",
+                    e
+                );
+            }
+            if let Err(e) = compiled_rules.save("/var/lib/css/yara_rules/compiled_rules.yarc") {
+                error!(
+                    "Failed to save compiled yara rules...This will lead to them being recompiled again during the next application runtime. {}",
+                    e
+                );
+            }
+            compiled_rules.save("/var/lib/css/yara_rules/compiled_rules.yarc")?;
+            Ok(compiled_rules)
+        }
+        Err(e) => {
+            error!("Failed to compile yara rules: {}", e);
+            Err(e.into())
+        }
+    }
 }

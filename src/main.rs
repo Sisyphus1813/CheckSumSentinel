@@ -21,7 +21,7 @@ mod user_notification;
 
 use crate::checks::scan_file;
 use crate::daemon::watch_directories;
-use crate::data_handling::setup;
+use crate::data_handling::{compile_and_save, load_hashes, load_rules, setup};
 use crate::user_notification::notify_user;
 use arg::{Cli, Commands};
 use clap::Parser;
@@ -34,11 +34,13 @@ fn main() {
     if let Err(e) = setup() {
         error!("Failed to complete directory setup process: {e}");
     }
+    let hashes = load_hashes().unwrap();
+    let rules = load_rules().unwrap();
     let cli = Cli::parse();
     match cli.command {
         Commands::Scan { file } => {
             let path = Path::new(&file);
-            match scan_file(path) {
+            match scan_file(path, &hashes, &rules) {
                 Ok(result) => notify_user(path, &result, true),
                 Err(e) => eprintln!("Error scanning file: {e}"),
             }
@@ -59,11 +61,17 @@ fn main() {
                 {
                     eprintln!("Error updating hashes: {e}");
                 }
-            })
-        } // <-- This was missing
+            });
+            if yara {
+                compile_and_save().unwrap();
+            }
+        }
         Commands::Watch => {
-            if let Err(e) = watch_directories() {
-                error!("Encountered an error while attempting to watch directories: {e}");
+            if let Err(e) = watch_directories(&hashes, &rules) {
+                error!(
+                    "Encountered an error while attempting to watch directories: {}",
+                    e
+                );
             }
         }
     }
