@@ -1,5 +1,7 @@
 # CheckSumSentinel (css)
 
+> **Status:** A major refactor is planned soon for changes to scope and capabilities.
+
 CheckSumSentinel (css) is a Rust project designed to automatically fetch, store, and monitor known malicious file hashes and YARA rules from open source threat intelligence feeds. It integrates with `systemd` services and timers to continuously update hash sets and provide a daemonized monitoring process that checks directories for compromised files.
 
 ---
